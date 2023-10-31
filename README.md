@@ -4,7 +4,7 @@ Yet another Command Line Option Manager for C++. Use this single header library 
 ---
 
 ### Usage
-Simply include `clom.hpp` in your source code.  
+Simply include [clom.hpp](clom.hpp) in your source code.  
 Then, you just need to do the following steps:  
 - Create the clom object
 - Register all settings and flags
