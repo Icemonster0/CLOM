@@ -22,15 +22,15 @@ int main(int argc, char const *argv[]) {
     // create the clom object
     CL_Option_Manager clom;
 
-    // register settings (with default values) and flags
+    // 1. register settings (with default values) and flags
     clom.register_setting("name", "Mr X");
     clom.register_setting("height", "6.0");
     clom.register_flag("--smart");
 
-    // let clom process the options
+    // 2. let clom process the options
     clom.process_cl_options(argc, argv);
 
-    // save and print the settings
+    // 3. save and print the settings
     std::string name = clom.get_setting_value("name");
     float height = std::stof(clom.get_setting_value("height"));
     bool is_smart = clom.is_flag_set("--smart");
@@ -43,15 +43,41 @@ int main(int argc, char const *argv[]) {
 ```
 Here are possible results:
 ```
-$ my_app
+$ my-app
 Mr X is 6 foot tall and is not smart.
 ```
 ```
-$ my_app name Mark --smart height 5.2
+$ my-app name Mark --smart height 5.2
 Mark is 5.2 foot tall and is smart.
 ```
 ```
-$ my_app name Mark age 30
+$ my-app name Mark age 30
 Unknown option: age
 Invalid command line options!
+```
+
+### Functions
+Here are all public functions of the class CL_Option_Manager:
+``` C++
+// Constructor
+CL_Option_Manager();
+
+// Options not registered this way are treated as invalid!
+// A 'setting' is an option with a value
+void register_setting(std::string name, std::string default_value);
+// A 'flag' is an option that is either set or not set (boolean)
+void register_flag(std::string name);
+
+// Scan argv for registered options
+void process_cl_options(int argc, char const *argv[]);
+
+// Get the value of options (need to be called after process_cl_options())
+std::string get_setting_value(std::string name);
+bool is_flag_set(std::string name);
+
+// Set and print the help/hint text (eg. "Usage: my-app [options]" etc.)
+// The default hint is "Invalid command line options!",
+// so you might want to set a custom one.
+void set_user_hint(std::string hint);
+void print_user_hint(); // Does not exit automatically
 ```
