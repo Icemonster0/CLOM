@@ -29,8 +29,7 @@
 #include <vector>
 #include <iostream>
 #include <typeinfo>
-
-
+#include <memory>
 
 class CL_Option_Manager {
 private:
@@ -78,7 +77,7 @@ public:
 
     template<typename T>
     void register_setting(std::string name, T default_value) {
-        settings.push_back(new CLOM_Setting<T>(name, default_value));
+        settings.push_back(std::unique_ptr<CLOM_General_Setting>(new CLOM_Setting<T>(name, default_value)));
     }
 
     void register_flag(std::string name) {
@@ -174,9 +173,9 @@ public:
 private:
 
     CLOM_General_Setting* get_general_setting_by_name(std::string name) {
-        for (CLOM_General_Setting *setting : settings) {
+        for (std::unique_ptr<CLOM_General_Setting> &setting : settings) {
             if (setting->name.compare(name) == 0) {
-                return setting;
+                return setting.get();
             }
         }
 
@@ -203,7 +202,7 @@ private:
         else {std::cout << "Unsopported option type: " << typeid(T).name() << '\n'; exit(1);}
     }
 
-    std::vector<CLOM_General_Setting*> settings;
+    std::vector<std::unique_ptr<CLOM_General_Setting>> settings;
     std::vector<CLOM_Flag> flags;
 
     std::string user_hint;
