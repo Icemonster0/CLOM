@@ -23,16 +23,16 @@ int main(int argc, char const *argv[]) {
     CL_Option_Manager clom;
 
     // 1. register settings (with default values) and flags
-    clom.register_setting("name", "Mr X");
-    clom.register_setting("height", "6.0");
+    clom.register_setting<std::string>("name", "Mr X");
+    clom.register_setting<float>("height", 6.0f);
     clom.register_flag("--smart");
 
     // 2. let clom process the options
     clom.process_cl_options(argc, argv);
 
     // 3. save and print the settings
-    std::string name = clom.get_setting_value("name");
-    float height = std::stof(clom.get_setting_value("height"));
+    std::string name = clom.get_setting_value<std::string>("name");
+    float height = clom.get_setting_value<float>("height");
     bool is_smart = clom.is_flag_set("--smart");
 
     std::cout << name << " is " << height << " foot tall ";
@@ -57,27 +57,42 @@ Invalid command line options!
 ```
 
 ### Functions
-Here are all public functions of the class CL_Option_Manager:
+Here is a list of all public member functions of the class `CL_Option_Manager` with their descriptions:
+
+###### Construtor
 ``` C++
-// Constructor
 CL_Option_Manager();
-
-// Options not registered this way are treated as invalid!
-// A 'setting' is an option with a value
-void register_setting(std::string name, std::string default_value);
-// A 'flag' is an option that is either set or not set (boolean)
-void register_flag(std::string name);
-
-// Scan argv for registered options
-void process_cl_options(int argc, char const *argv[]);
-
-// Get the value of options (need to be called after process_cl_options())
-std::string get_setting_value(std::string name);
-bool is_flag_set(std::string name);
-
-// Set and print the help/hint text (eg. "Usage: my-app [options]" etc.)
-// The default hint is "Invalid command line options!",
-// so you might want to set a custom one.
-void set_user_hint(std::string hint);
-void print_user_hint(); // Does not exit automatically
 ```
+The constructor of CL_Option_Manager. Create a new empty manager with no registered options.
+
+###### Register Options
+``` C++
+void register_setting<T>(std::string name, T default_value);
+void register_flag(std::string name);
+```
+Register a new option (setting or flag respectively). Options not registered this way are treated as invalid!  
+A *setting* is an option with a value of type T. Valid types for T are: `int, float, double, char, std::string`  
+A *flag* is an option that is either set or not set (boolean).  
+
+###### Process/Parse Options
+``` C++
+void process_cl_options(int argc, char const *argv[]);
+```
+Scan argv for registered options. All `register_setting` and `register_flag` calls must happen before this.
+
+###### Get Option Values
+``` C++
+T get_setting_value<T>(std::string name);
+bool is_flag_set(std::string name);
+```
+Get the value of options. Must be called after `process_cl_options`.  
+The type T must be the same as the one specified for the setting with the same name in `register_setting`.
+
+###### Manage Help Message
+``` C++
+void set_user_hint(std::string hint);
+void print_user_hint();
+```
+Set the help/hint message (eg. "Usage: my-app [options]" etc.) or print it.  
+The default hint is "Invalid command line options!", so you might want to set a custom one.  
+`print_user_hint` only prints, does not exit automatically.
