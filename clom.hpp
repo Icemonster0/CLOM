@@ -30,6 +30,7 @@
 #include <iostream>
 #include <typeinfo>
 #include <memory>
+#include <cxxabi.h>
 
 class CL_Option_Manager {
 private:
@@ -199,7 +200,13 @@ private:
         else if (typeid(T) == typeid(double)) return DOUBLE;
         else if (typeid(T) == typeid(char)) return CHAR;
         else if (typeid(T) == typeid(std::string)) return STRING;
-        else {std::cout << "Unsopported option type: " << typeid(T).name() << '\n'; exit(1);}
+        else {
+            int status;
+            char *realname = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+            std::cout << "Unsopported option type: " << realname << '\n';
+            std::free(realname);
+            exit(1);
+        }
     }
 
     std::vector<std::unique_ptr<CLOM_General_Setting>> settings;
