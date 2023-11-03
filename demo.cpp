@@ -17,16 +17,16 @@ int main(int argc, char const *argv[]) {
     CL_Option_Manager clom;
 
     // 1. register settings (with default values) and flags
-    clom.register_setting("name", "Mr X");
-    clom.register_setting("height", "6.0");
+    clom.register_setting<std::string>("name", "Mr X");
+    clom.register_setting<float>("height", 6.0f);
     clom.register_flag("--smart");
 
     // 2. let clom process the options
     clom.process_cl_options(argc, argv);
 
     // 3. save and print the settings
-    std::string name = clom.get_setting_value("name");
-    float height = std::stof(clom.get_setting_value("height"));
+    std::string name = clom.get_setting_value<std::string>("name");
+    float height = clom.get_setting_value<float>("height");
     bool is_smart = clom.is_flag_set("--smart");
 
     std::cout << name << " is " << height << " foot tall ";
