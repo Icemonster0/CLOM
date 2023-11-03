@@ -45,8 +45,8 @@ private:
         // this is not hacky idk what you're talking about
         virtual void this_is_polymorphic() = 0;
 
-        std::string name;
-        CLOM_Type type;
+        const std::string name;
+        const CLOM_Type type;
     };
 
     template<typename T>
@@ -78,10 +78,11 @@ public:
 
     template<typename T>
     void register_setting(std::string name, T default_value) {
+        CLOM_Type type = cpp_type_to_clom_type<T>();
         if (get_general_setting_by_name(name) || get_flag_by_name(name)) {
-            std::cout << "Option '" << name << "' may only be registered once!\n"
+            std::cout << "error: Option '" << name << "' may only be registered once!\n"
                       << "(from: CL_Option_Manager::register_setting<"
-                      << clom_type_names[cpp_type_to_clom_type<T>()]
+                      << clom_type_names[type]
                       << ">(\"" << name << "\", " << default_value << "))" << '\n';
             exit(1);
         }
@@ -90,7 +91,7 @@ public:
 
     void register_flag(std::string name) {
         if (get_general_setting_by_name(name) || get_flag_by_name(name)) {
-            std::cout << "Option '" << name << "' may only be registered once!\n"
+            std::cout << "error: Option '" << name << "' may only be registered once!\n"
                       << "(from: CL_Option_Manager::register_flag"
                       << "(\"" << name << "\"))" << '\n';
             exit(1);
@@ -105,7 +106,7 @@ public:
 
             if (setting) {
                 if (!(i < argc-1)) {
-                    std::cout << "Missing value for '" << argv[i] << "'\n";
+                    std::cout << "error: Missing value for setting '" << argv[i] << "'\n";
                     print_user_hint();
                     exit(1);
                 }
@@ -117,11 +118,9 @@ public:
                         case DOUBLE: dynamic_cast<CLOM_Setting<double>*>(setting)->value = std::stod(argv[i+1]); break;
                         case CHAR: dynamic_cast<CLOM_Setting<char>*>(setting)->value = argv[i+1][0]; break;
                         case STRING: dynamic_cast<CLOM_Setting<std::string>*>(setting)->value = argv[i+1]; break;
-                        default: std::cout << "CLOM internal error: setting '" << argv[i] << "', value '" << argv[i+1]
-                                           << "', type " << setting->type << "\n"; exit(1);
                     }
                 } catch (...) {
-                    std::cout << "Failed to parse value '" << argv[i+1] << "' of '" << argv[i]
+                    std::cout << "error: Failed to parse value '" << argv[i+1] << "' of setting '" << argv[i]
                               << "'! Expected type: " << clom_type_names[setting->type] << "\n";
                     print_user_hint();
                     exit(1);
@@ -136,7 +135,7 @@ public:
             }
 
             else {
-                std::cout << "Unknown option: '" << argv[i] << "'\n";
+                std::cout << "error: Unknown option: '" << argv[i] << "'\n";
                 print_user_hint();
                 exit(1);
             }
@@ -147,11 +146,11 @@ public:
     T get_setting_value(std::string name) {
         CLOM_General_Setting *setting = get_general_setting_by_name(name);
 
+        CLOM_Type t = cpp_type_to_clom_type<T>();
         if (setting) {
-            CLOM_Type t = cpp_type_to_clom_type<T>();
 
             if (setting->type != t) {
-                std::cout << "Type of '" << name << "' is " << clom_type_names[setting->type]
+                std::cout << "error: Type of '" << name << "' is " << clom_type_names[setting->type]
                           << ", but " << clom_type_names[t]
                           << " requested\n(from: CL_Option_Manager::get_setting_value<" << clom_type_names[t] << ">(\"" << name << "\"))\n";
                 exit(1);
@@ -160,7 +159,8 @@ public:
             return dynamic_cast<CLOM_Setting<T>*>(setting)->value;
         }
         else {
-            std::cout << "The setting " << name << " is not registered!" << '\n';
+            std::cout << "error: The setting '" << name << "' is not registered!\n"
+                      << "(from: CL_Option_Manager::get_setting_value<" << clom_type_names[t] << ">(\"" << name << "\"))\n";
             exit(1);
         }
     }
@@ -171,7 +171,8 @@ public:
         if (flag)
             return flag->is_set;
         else {
-            std::cout << "The flag " << name << " is not registered!" << '\n';
+            std::cout << "error: The flag '" << name << "' is not registered!\n"
+                      << "(from: CL_Option_Manager::is_flag_set(\"" << name << "\"))\n";
             exit(1);
         }
     }
@@ -216,7 +217,11 @@ private:
         else {
             int status;
             char *realname = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-            std::cout << "Unsopported option type: " << realname << '\n';
+            std::cout << "error: Unsopported option type: " << realname << "\n"
+                      << "(from: CL_Option_Manager::cpp_type_to_clom_type<" << realname << ">())\n"
+                      << "valid types are: ";
+            for (std::string type_name : clom_type_names) std::cout << type_name << "; ";
+            std::cout << '\n';
             std::free(realname);
             exit(1);
         }
@@ -227,8 +232,8 @@ private:
 
     std::string user_hint;
 
-    const std::string clom_type_names[5] {
-        "INT", "FLOAT", "DOUBLE", "CHAR", "STRING"
+    static const inline std::string clom_type_names[5] {
+        "int", "float", "double", "char", "std::string"
     };
 };
 
