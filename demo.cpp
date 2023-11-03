@@ -24,7 +24,7 @@ int main(int argc, char const *argv[]) {
     // 2. let clom process the options
     clom.process_cl_options(argc, argv);
 
-    // 3. save and print the settings
+    // 3. save and print the options
     std::string name = clom.get_setting_value<std::string>("name");
     float height = clom.get_setting_value<float>("height");
     bool is_smart = clom.is_flag_set("--smart");

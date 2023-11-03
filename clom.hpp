@@ -78,10 +78,23 @@ public:
 
     template<typename T>
     void register_setting(std::string name, T default_value) {
+        if (get_general_setting_by_name(name) || get_flag_by_name(name)) {
+            std::cout << "Option '" << name << "' may only be registered once!\n"
+                      << "(from: CL_Option_Manager::register_setting<"
+                      << clom_type_names[cpp_type_to_clom_type<T>()]
+                      << ">(\"" << name << "\", " << default_value << "))" << '\n';
+            exit(1);
+        }
         settings.push_back(std::unique_ptr<CLOM_General_Setting>(new CLOM_Setting<T>(name, default_value)));
     }
 
     void register_flag(std::string name) {
+        if (get_general_setting_by_name(name) || get_flag_by_name(name)) {
+            std::cout << "Option '" << name << "' may only be registered once!\n"
+                      << "(from: CL_Option_Manager::register_flag"
+                      << "(\"" << name << "\"))" << '\n';
+            exit(1);
+        }
         flags.emplace_back(name);
     }
 

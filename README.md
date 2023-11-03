@@ -6,10 +6,9 @@ Yet another Command Line Option Manager for C++. Use this single header library 
 ### Usage
 Simply include [clom.hpp](clom.hpp) in your source code.  
 Then, you just need to do the following steps:  
-- Create the clom object
 - Register all settings and flags
-- Let clom process the command line options
-- Use the settings however you like
+- Let clom parse the command line options
+- Use the options however you like
 
 ### Example
 Here is an example of how to use clom:
@@ -30,7 +29,7 @@ int main(int argc, char const *argv[]) {
     // 2. let clom process the options
     clom.process_cl_options(argc, argv);
 
-    // 3. save and print the settings
+    // 3. save and print the options
     std::string name = clom.get_setting_value<std::string>("name");
     float height = clom.get_setting_value<float>("height");
     bool is_smart = clom.is_flag_set("--smart");
@@ -70,7 +69,7 @@ The constructor of CL_Option_Manager. Create a new empty manager with no registe
 void register_setting<T>(std::string name, T default_value);
 void register_flag(std::string name);
 ```
-Register a new option (setting or flag respectively). Options not registered this way are treated as invalid!  
+Register a new option (setting or flag respectively). Options not registered this way are treated as invalid. All option names must be unique!  
 A *setting* is an option with a value of type T. Valid types for T are: `int, float, double, char, std::string`  
 A *flag* is an option that is either set or not set (boolean).  
 
