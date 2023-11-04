@@ -34,12 +34,18 @@
 
 class CL_Option_Manager {
 private:
+
     enum CLOM_Type {
-        INT, FLOAT, DOUBLE, CHAR, STRING
+        INT, FLOAT, DOUBLE, CHAR, STRING, N_A
     };
 
-    struct CLOM_General_Setting {
-        CLOM_General_Setting(std::string p_name, CLOM_Type p_type) : name(p_name), type(p_type) {
+    static const inline std::string clom_type_names[5] {
+        "int", "float", "double", "char", "std::string"
+    };
+
+    struct CLOM_Option {
+        CLOM_Option(std::string p_name, CLOM_Type p_type, std::string p_description)
+            : name(p_name), type(p_type), description(p_description) {
         }
 
         // this is not hacky idk what you're talking about
@@ -47,27 +53,29 @@ private:
 
         const std::string name;
         const CLOM_Type type;
+        const std::string description;
     };
 
     template<typename T>
-    struct CLOM_Setting : public CLOM_General_Setting {
-        CLOM_Setting(std::string p_name, T p_value)
-            : CLOM_General_Setting {p_name, CL_Option_Manager::cpp_type_to_clom_type<T>()}, value(p_value) {
+    struct CLOM_Setting : public CLOM_Option {
+        CLOM_Setting(std::string p_name, T p_value, std::string p_description)
+            : CLOM_Option {p_name, CL_Option_Manager::cpp_type_to_clom_type<T>(), p_description}, value(p_value) {
         }
 
         // the other bit that is also not hacky
-        void this_is_polymorphic() {
-        }
+        void this_is_polymorphic() {}
 
         T value;
     };
 
-    struct CLOM_Flag {
-        CLOM_Flag(std::string p_name)
-            : name(p_name), is_set(false) {
+    struct CLOM_Flag : CLOM_Option {
+        CLOM_Flag(std::string p_name, std::string p_description)
+            : CLOM_Option {p_name, N_A, p_description}, is_set(false) {
         }
 
-        std::string name;
+        // no hackage going on here
+        void this_is_polymorphic() {}
+
         bool is_set;
     };
 
@@ -77,7 +85,7 @@ public:
     }
 
     template<typename T>
-    void register_setting(std::string name, T default_value) {
+    void register_setting(std::string name, T default_value, std::string description = "") {
         CLOM_Type type = cpp_type_to_clom_type<T>();
         if (get_general_setting_by_name(name) || get_flag_by_name(name)) {
             std::cout << "error: Option '" << name << "' may only be registered once!\n"
@@ -86,22 +94,22 @@ public:
                       << ">(\"" << name << "\", " << default_value << "))" << '\n';
             exit(1);
         }
-        settings.push_back(std::unique_ptr<CLOM_General_Setting>(new CLOM_Setting<T>(name, default_value)));
+        settings.push_back(std::unique_ptr<CLOM_Option>(new CLOM_Setting<T>(name, default_value, description)));
     }
 
-    void register_flag(std::string name) {
+    void register_flag(std::string name, std::string description = "") {
         if (get_general_setting_by_name(name) || get_flag_by_name(name)) {
             std::cout << "error: Option '" << name << "' may only be registered once!\n"
                       << "(from: CL_Option_Manager::register_flag"
                       << "(\"" << name << "\"))" << '\n';
             exit(1);
         }
-        flags.emplace_back(name);
+        flags.emplace_back(name, description);
     }
 
     void process_cl_options(int argc, char const *argv[]) {
         for (size_t i = 1; i < argc;) {
-            CLOM_General_Setting *setting = get_general_setting_by_name(argv[i]);
+            CLOM_Option *setting = get_general_setting_by_name(argv[i]);
             CLOM_Flag *flag = get_flag_by_name(argv[i]);
 
             if (setting) {
@@ -144,7 +152,7 @@ public:
 
     template<typename T>
     T get_setting_value(std::string name) {
-        CLOM_General_Setting *setting = get_general_setting_by_name(name);
+        CLOM_Option *setting = get_general_setting_by_name(name);
 
         CLOM_Type t = cpp_type_to_clom_type<T>();
         if (setting) {
@@ -187,8 +195,8 @@ public:
 
 private:
 
-    CLOM_General_Setting* get_general_setting_by_name(std::string name) {
-        for (std::unique_ptr<CLOM_General_Setting> &setting : settings) {
+    CLOM_Option* get_general_setting_by_name(std::string name) {
+        for (std::unique_ptr<CLOM_Option> &setting : settings) {
             if (setting->name.compare(name) == 0) {
                 return setting.get();
             }
@@ -214,10 +222,11 @@ private:
         else if (typeid(T) == typeid(double)) return DOUBLE;
         else if (typeid(T) == typeid(char)) return CHAR;
         else if (typeid(T) == typeid(std::string)) return STRING;
+        // THERE CAN BE NO RETURN STATEMENT RETURNING 'CLOM_Type::N_A'!
         else {
             int status;
             char *realname = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
-            std::cout << "error: Unsopported option type: " << realname << "\n"
+            std::cout << "error: Unsopported setting type: " << realname << "\n"
                       << "(from: CL_Option_Manager::cpp_type_to_clom_type<" << realname << ">())\n"
                       << "valid types are: ";
             for (std::string type_name : clom_type_names) std::cout << type_name << "; ";
@@ -227,14 +236,10 @@ private:
         }
     }
 
-    std::vector<std::unique_ptr<CLOM_General_Setting>> settings;
+    std::vector<std::unique_ptr<CLOM_Option>> settings;
     std::vector<CLOM_Flag> flags;
 
     std::string user_hint;
-
-    static const inline std::string clom_type_names[5] {
-        "int", "float", "double", "char", "std::string"
-    };
 };
 
 #endif /* end of include guard: CLOM_HPP */
