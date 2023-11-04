@@ -17,9 +17,12 @@ int main(int argc, char const *argv[]) {
     CL_Option_Manager clom;
 
     // 1. register settings (with default values) and flags
-    clom.register_setting<std::string>("name", "Mr X");
-    clom.register_setting<float>("height", 6.0f);
-    clom.register_flag("--smart");
+    clom.register_setting<std::string>("name", "Mr X", "The name of our subject");
+    clom.register_setting<float>("height", 6.0f, "The height of our subject in feet");
+    clom.register_flag("--smart", "Specify whether our subject is smart");
+
+    // Optionally generate help massage
+    clom.generate_user_hint("my-app");
 
     // 2. let clom process the options
     clom.process_cl_options(argc, argv);

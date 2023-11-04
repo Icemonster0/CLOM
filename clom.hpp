@@ -26,11 +26,14 @@
 #define CLOM_HPP
 
 #include <string>
+#include <sstream>
 #include <vector>
 #include <iostream>
+#include <iomanip>
 #include <typeinfo>
 #include <memory>
 #include <cxxabi.h>
+#include <algorithm>
 
 class CL_Option_Manager {
 private:
@@ -44,6 +47,7 @@ private:
     };
 
     struct CLOM_Option {
+    public:
         CLOM_Option(std::string p_name, CLOM_Type p_type, std::string p_description)
             : name(p_name), type(p_type), description(p_description) {
         }
@@ -51,9 +55,14 @@ private:
         // this is not hacky idk what you're talking about
         virtual void this_is_polymorphic() = 0;
 
-        const std::string name;
-        const CLOM_Type type;
-        const std::string description;
+        std::string get_name() {return name;}
+        CLOM_Type get_type() {return type;}
+        std::string get_description() {return description;}
+
+    protected:
+        std::string name;
+        CLOM_Type type;
+        std::string description;
     };
 
     template<typename T>
@@ -65,6 +74,10 @@ private:
         // the other bit that is also not hacky
         void this_is_polymorphic() {}
 
+        void set_value(T v) {value = v;}
+        T get_value() {return value;}
+
+    private:
         T value;
     };
 
@@ -76,12 +89,16 @@ private:
         // no hackage going on here
         void this_is_polymorphic() {}
 
+        void set_is_set(bool v) {is_set = v;}
+        bool get_is_set() {return is_set;}
+
+    private:
         bool is_set;
     };
 
 public:
 
-    CL_Option_Manager() : user_hint("Invalid command line options!\n") {
+    CL_Option_Manager() {
     }
 
     template<typename T>
@@ -120,16 +137,16 @@ public:
                 }
 
                 try {
-                    switch (setting->type) {
-                        case INT: dynamic_cast<CLOM_Setting<int>*>(setting)->value = std::stoi(argv[i+1]); break;
-                        case FLOAT: dynamic_cast<CLOM_Setting<float>*>(setting)->value = std::stof(argv[i+1]); break;
-                        case DOUBLE: dynamic_cast<CLOM_Setting<double>*>(setting)->value = std::stod(argv[i+1]); break;
-                        case CHAR: dynamic_cast<CLOM_Setting<char>*>(setting)->value = argv[i+1][0]; break;
-                        case STRING: dynamic_cast<CLOM_Setting<std::string>*>(setting)->value = argv[i+1]; break;
+                    switch (setting->get_type()) {
+                        case INT: dynamic_cast<CLOM_Setting<int>*>(setting)->set_value(std::stoi(argv[i+1])); break;
+                        case FLOAT: dynamic_cast<CLOM_Setting<float>*>(setting)->set_value(std::stof(argv[i+1])); break;
+                        case DOUBLE: dynamic_cast<CLOM_Setting<double>*>(setting)->set_value(std::stod(argv[i+1])); break;
+                        case CHAR: dynamic_cast<CLOM_Setting<char>*>(setting)->set_value(argv[i+1][0]); break;
+                        case STRING: dynamic_cast<CLOM_Setting<std::string>*>(setting)->set_value(argv[i+1]); break;
                     }
                 } catch (...) {
                     std::cout << "error: Failed to parse value '" << argv[i+1] << "' of setting '" << argv[i]
-                              << "'! Expected type: " << clom_type_names[setting->type] << "\n";
+                              << "'! Expected type: " << clom_type_names[setting->get_type()] << "\n";
                     print_user_hint();
                     exit(1);
                 }
@@ -138,7 +155,7 @@ public:
             }
 
             else if (flag) {
-                flag->is_set = true;
+                flag->set_is_set(true);
                 i += 1;
             }
 
@@ -157,14 +174,14 @@ public:
         CLOM_Type t = cpp_type_to_clom_type<T>();
         if (setting) {
 
-            if (setting->type != t) {
-                std::cout << "error: Type of '" << name << "' is " << clom_type_names[setting->type]
+            if (setting->get_type() != t) {
+                std::cout << "error: Type of '" << name << "' is " << clom_type_names[setting->get_type()]
                           << ", but " << clom_type_names[t]
                           << " requested\n(from: CL_Option_Manager::get_setting_value<" << clom_type_names[t] << ">(\"" << name << "\"))\n";
                 exit(1);
             }
 
-            return dynamic_cast<CLOM_Setting<T>*>(setting)->value;
+            return dynamic_cast<CLOM_Setting<T>*>(setting)->get_value();
         }
         else {
             std::cout << "error: The setting '" << name << "' is not registered!\n"
@@ -177,7 +194,7 @@ public:
         CLOM_Flag *flag = get_flag_by_name(name);
 
         if (flag)
-            return flag->is_set;
+            return flag->get_is_set();
         else {
             std::cout << "error: The flag '" << name << "' is not registered!\n"
                       << "(from: CL_Option_Manager::is_flag_set(\"" << name << "\"))\n";
@@ -189,15 +206,96 @@ public:
         user_hint = hint;
     }
 
+    std::string get_user_hint() {
+        return user_hint;
+    }
+
+    void generate_user_hint(std::string app_name) {
+        std::sort(settings.begin(), settings.end(), [](std::unique_ptr<CLOM_Option> &a, std::unique_ptr<CLOM_Option> &b) {
+            return a->get_name().compare(b->get_name()) < 0;
+        });
+        std::sort(flags.begin(), flags.end(), [](CLOM_Flag a, CLOM_Flag b) {
+            return a.get_name().compare(b.get_name()) < 0;
+        });
+
+        std::stringstream ss;
+
+        ss << "Usage: " << app_name << " [<setting> <value>] [<flag>] ...\n";
+        ss << "\n";
+
+        const int window_w = 80;
+        const int name_w = 20;
+        const int type_w = 16;
+        const int desc_w = window_w-name_w-type_w;
+
+        int column = 0;
+
+        ss << "Settings:\n";
+        ss << std::left << std::setw(name_w) << " Name:";
+        ss << std::left << std::setw(type_w) << " Type:";
+        ss << " Description:\n";
+
+        for (int i = 0; i < settings.size(); ++i) {
+            ss << "  " << std::left << std::setw(name_w-2) << settings[i]->get_name();
+            if (settings[i]->get_name().length() + 2 > name_w)
+                ss << "\n" << std::setw(name_w) << " ";
+
+            ss << "  " << std::left << std::setw(type_w-2) << clom_type_names[settings[i]->get_type()];
+            if (clom_type_names[settings[i]->get_type()].length() + 2 > type_w)
+                ss << "\n" << std::setw(name_w+type_w) << " ";
+
+            ss << "  ";
+            int column = 0;
+            for (char c : settings[i]->get_description()) {
+                if (column >= desc_w-2) {
+                    ss << "\n" << std::setw(name_w+type_w+2) << " ";
+                    column = 0;
+                }
+                ++column;
+                ss << c;
+            }
+
+            ss << "\n";
+        }
+
+        ss << "\n";
+
+        ss << "Flags:\n";
+        ss << std::left << std::setw(name_w) << " Name:";
+        ss << " Description:\n";
+
+        for (int i = 0; i < flags.size(); ++i) {
+            ss << "  " << std::left << std::setw(name_w-2) << flags[i].get_name();
+            if (flags[i].get_name().length() + 2 > name_w)
+                ss << "\n" << std::setw(name_w) << " ";
+
+            ss << "  ";
+            int column = 0;
+            for (char c : flags[i].get_description()) {
+                if (column >= desc_w+type_w-2) {
+                    ss << "\n" << std::setw(name_w+2) << " ";
+                    column = 0;
+                }
+                ++column;
+                ss << c;
+            }
+
+            ss << "\n";
+        }
+
+        user_hint = ss.str();
+    }
+
     void print_user_hint() {
-        std::cout << user_hint << '\n';
+        std::cout << user_hint;
+        if (user_hint[user_hint.length()-1] != '\n') std::cout << '\n';
     }
 
 private:
 
     CLOM_Option* get_general_setting_by_name(std::string name) {
         for (std::unique_ptr<CLOM_Option> &setting : settings) {
-            if (setting->name.compare(name) == 0) {
+            if (setting->get_name().compare(name) == 0) {
                 return setting.get();
             }
         }
@@ -207,7 +305,7 @@ private:
 
     CLOM_Flag* get_flag_by_name(std::string name) {
         for (CLOM_Flag &flag : flags) {
-            if (flag.name.compare(name) == 0) {
+            if (flag.get_name().compare(name) == 0) {
                 return &flag;
             }
         }
@@ -239,7 +337,7 @@ private:
     std::vector<std::unique_ptr<CLOM_Option>> settings;
     std::vector<CLOM_Flag> flags;
 
-    std::string user_hint;
+    std::string user_hint = "";
 };
 
 #endif /* end of include guard: CLOM_HPP */

@@ -6,9 +6,9 @@ Yet another Command Line Option Manager for C++. Use this single header library 
 ### Usage
 Simply include [clom.hpp](clom.hpp) in your source code.  
 Then, you just need to do the following steps:  
-- Register all settings and flags
-- Let clom parse the command line options
-- Use the options however you like
+1. Register all settings and flags
+2. Let clom parse the command line options
+3. Use the options however you like
 
 ### Example
 Here is an example of how to use clom:
@@ -22,9 +22,12 @@ int main(int argc, char const *argv[]) {
     CL_Option_Manager clom;
 
     // 1. register settings (with default values) and flags
-    clom.register_setting<std::string>("name", "Mr X");
-    clom.register_setting<float>("height", 6.0f);
-    clom.register_flag("--smart");
+    clom.register_setting<std::string>("name", "Mr X", "The name of our subject");
+    clom.register_setting<float>("height", 6.0f, "The height of our subject in feet");
+    clom.register_flag("--smart", "Specify whether our subject is smart");
+
+    // Optionally generate help massage
+    clom.generate_user_hint("my-app");
 
     // 2. let clom process the options
     clom.process_cl_options(argc, argv);
@@ -51,8 +54,17 @@ Mark is 5.2 foot tall and is smart.
 ```
 ```
 $ my-app name Mark age 30
-Unknown option: age
-Invalid command line options!
+error: Unknown option: 'age'
+Usage: my-app [<setting> <value>] [<flag>] ...
+
+Settings:
+ Name:               Type:           Description:
+  height              float           The height of our subject in feet
+  name                std::string     The name of our subject
+
+Flags:
+ Name:               Description:
+  --smart             Specify whether our subject is smart
 ```
 
 ### Functions
@@ -66,8 +78,8 @@ The constructor of CL_Option_Manager. Create a new empty manager with no registe
 
 ###### Register Options
 ``` C++
-void register_setting<T>(std::string name, T default_value);
-void register_flag(std::string name);
+void register_setting<T>(std::string name, T default_value, std::string description = "");
+void register_flag(std::string name, std::string description = "");
 ```
 Register a new option (setting or flag respectively). Options not registered this way are treated as invalid. All option names must be unique!  
 A *setting* is an option with a value of type T. Valid types for T are: `int, float, double, char, std::string`  
@@ -90,8 +102,10 @@ The type T must be the same as the one specified for the setting with the same n
 ###### Manage Help Message
 ``` C++
 void set_user_hint(std::string hint);
+std::string get_user_hint();
+void generate_user_hint(std::string app_name);
 void print_user_hint();
 ```
-Set the help/hint message (eg. "Usage: my-app [options]" etc.) or print it.  
-The default hint is "Invalid command line options!", so you might want to set a custom one.  
+Set or get the help massage. By default it is an empty string.  
+`generate_user_hint` must be called after option registrations and before `process_cl_options`!
 `print_user_hint` only prints, does not exit automatically.
