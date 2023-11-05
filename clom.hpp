@@ -247,12 +247,14 @@ public:
             ss << "  ";
             int column = 0;
             for (char c : settings[i]->get_description()) {
-                if (column >= desc_w-2) {
+                if (column >= desc_w-2 || c == '\n') {
                     ss << "\n" << std::setw(name_w+type_w+2) << " ";
                     column = 0;
                 }
-                ++column;
-                ss << c;
+                if (c != '\n') {
+                    ++column;
+                    ss << c;
+                }
             }
 
             ss << "\n";
@@ -272,12 +274,14 @@ public:
             ss << "  ";
             int column = 0;
             for (char c : flags[i].get_description()) {
-                if (column >= desc_w+type_w-2) {
+                if (column >= desc_w+type_w-2 || c == '\n') {
                     ss << "\n" << std::setw(name_w+2) << " ";
                     column = 0;
                 }
-                ++column;
-                ss << c;
+                if (c != '\n') {
+                    ++column;
+                    ss << c;
+                }
             }
 
             ss << "\n";
