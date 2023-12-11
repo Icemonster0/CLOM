@@ -1,5 +1,5 @@
 # CLOM
-Yet another single-header Command Line Option Manager for C++.
+Yet another single-header Command Line Option Manager for C++. For a simpler and better alternative using macros, see [CLOM2](https://github.com/Icemonster0/CLOM2).
 
 ---
 
